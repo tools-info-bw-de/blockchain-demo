@@ -1,6 +1,7 @@
 <script>
   import "bootstrap/dist/css/bootstrap.min.css";
   import Block from "./Block.svelte";
+  import { fade } from "svelte/transition";
 
   let blocks = [
     {
@@ -51,6 +52,7 @@
   }
 
   let hintText = "";
+  let highlightedPreviousHash = "";
 </script>
 
 <svelte:head>
@@ -61,10 +63,16 @@
 <h1>Blockchain</h1>
 <div class="block-scroll">
   {#each blocks as blockData}
-    <Block bind:blockData bind:hintText />
+    <Block bind:blockData bind:hintText bind:highlightedPreviousHash />
   {/each}
+</div>
 
-  {hintText}
+<div class="d-flex justify-content-center mt-5 mb-3">
+  {#key hintText}
+    <div class="hintBox p-5">
+      <p in:fade={{ delay: 105, duration: 100 }}>{@html hintText}</p>
+    </div>
+  {/key}
 </div>
 
 <style>
@@ -72,5 +80,12 @@
     display: flex;
     flex-direction: row;
     overflow-x: auto;
+  }
+
+  .hintBox {
+    border: 1px dashed rgb(185, 110, 110);
+    width: 70vw;
+    min-width: 300px;
+    border-radius: 1rem;
   }
 </style>

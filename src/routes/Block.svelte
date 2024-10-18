@@ -2,7 +2,7 @@
   export const prerender = false;
 
   export let blockData = {
-    id: "unbekannter Fehler",
+    id: "?",
     previousHash: "",
     transactionHash: "",
     nonce: "",
@@ -12,6 +12,9 @@
   };
 
   export let hintText = "";
+
+  export let highlightedPreviousHash = "";
+  let highlighted = "";
 
   const hash = (val) =>
     crypto.subtle
@@ -47,11 +50,35 @@
 
   function hintNonce() {
     hintText =
-      "Nonce ist ein Wert, der so gewählt werden muss, dass der Hash des Headers mit einer bestimmten Anzahl an Nullen beginnt.";
+      "Nonce ('number used once') ist ein Wert, der so gewählt werden muss, dass der Hash des Headers mit einer bestimmten Anzahl an Nullen beginnt.";
+  }
+
+  function hintPreviousHash() {
+    hintText =
+      "Der <b>Hash des Headers</b> des <u>vorherigen</u> Blocks muss im aktuellen Block gespeichert werden. Nur, wenn beide Hashes <b>übereinstimmen</b>, ist der vorherige Block gültig.";
+    highlightedPreviousHash = blockData.id;
+  }
+
+  function hintTransactionHash() {
+    hintText = "Dieser SHA-256 Hash wird aus allen Transaktionen berechnet.";
+    highlighted = "transactions";
+  }
+
+  function hintHeader() {
+    hintText =
+      "Der Hash des Headers wird aus der Nonce, dem Hash des vorherigen Headers und dem Transaktionshash berechnet.";
+    highlighted = "header";
   }
 
   function removeHint() {
-    hintText = "";
+    showDefaultHint();
+    highlighted = "";
+    highlightedPreviousHash = "";
+  }
+
+  function showDefaultHint() {
+    hintText =
+      "<em>Fahre über ein Element, um eine Erklärung zu erhalten.</em>";
   }
 </script>
 
@@ -59,52 +86,76 @@
   <div class="card-header">Block #{blockData.id}</div>
   <div class="card-body">
     <div class="block-header">
-      <h5 class="card-title">Header</h5>
-      <div class="row g-2 align-items-center">
-        <div
-          class="input-group mb-2"
-          on:mouseover={hintNonce}
-          on:mouseleave={removeHint}
-          on:focus={hintNonce}
-          role="paragraph"
-        >
-          <span class="input-group-text" id="basic-addon1">Nonce</span>
-          <input
-            type="number"
-            class="form-control"
-            placeholder="Username"
-            bind:value={blockData.nonce}
-          />
-        </div>
-      </div>
-      <div class="row g-2 align-items-center">
-        <div class="input-group mb-2">
-          <span class="input-group-text" id="basic-addon1"
-            >Vorheriger Hashwert</span
+      <h5 class="card-title mb-3">Header</h5>
+      <div class="header-input {highlighted === 'header' ? 'highlighted' : ''}">
+        <div class="row g-2 align-items-center">
+          <div
+            class="input-group mb-2"
+            on:mouseover={hintNonce}
+            on:focus={hintNonce}
+            on:mouseleave={removeHint}
+            role="paragraph"
           >
-          <input
-            type="text"
-            class="form-control"
-            bind:value={blockData.previousHash}
-          />
+            <span class="input-group-text" id="basic-addon1">Nonce</span>
+            <input
+              type="number"
+              class="form-control"
+              placeholder="Username"
+              bind:value={blockData.nonce}
+            />
+          </div>
         </div>
-      </div>
-      <div class="row g-2 align-items-center">
-        <div class="input-group mb-2">
-          <span class="input-group-text" id="basic-addon1"
-            >Transaktionshash</span
+        <div class="row g-2 align-items-center">
+          <div
+            class="input-group mb-2 {highlightedPreviousHash === blockData.id
+              ? 'highlighted2'
+              : ''}"
+            on:mouseover={hintPreviousHash}
+            on:focus={hintPreviousHash}
+            on:mouseleave={removeHint}
+            role="paragraph"
           >
-          <input
-            type="text"
-            class="form-control"
-            disabled
-            bind:value={blockData.transactionHash}
-          />
+            <span class="input-group-text" id="basic-addon1"
+              >Vorheriger Hash</span
+            >
+            <input
+              type="text"
+              class="form-control"
+              bind:value={blockData.previousHash}
+            />
+          </div>
+        </div>
+        <div class="row g-2 align-items-center">
+          <div
+            class="input-group mb-2"
+            on:mouseover={hintTransactionHash}
+            on:focus={hintTransactionHash}
+            on:mouseleave={removeHint}
+            role="paragraph"
+          >
+            <span class="input-group-text" id="basic-addon1"
+              >Transaktionshash</span
+            >
+            <input
+              type="text"
+              class="form-control"
+              disabled
+              bind:value={blockData.transactionHash}
+            />
+          </div>
         </div>
       </div>
       <hr />
       <div class="row g-2 align-items-center">
-        <div class="input-group mb-2">
+        <div
+          class="input-group mb-2 {highlightedPreviousHash === blockData.id + 1
+            ? 'highlighted2'
+            : ''}"
+          on:mouseover={hintHeader}
+          on:focus={hintHeader}
+          on:mouseleave={removeHint}
+          role="paragraph"
+        >
           <span class="input-group-text" id="basic-addon1"
             >Hash des Headers</span
           >
@@ -120,8 +171,14 @@
   </div>
   <div class="card-body">
     <h5 class="card-title">Transaktionen</h5>
-    {#each blockData.transactions as transaction}
-      <div class="row g-3 align-items-center mb-2 transactionRow">
+    {#each blockData.transactions as transaction, i (i)}
+      <div
+        class="row g-3 align-items-center mb-2 transactionRow {highlighted ===
+        'transactions'
+          ? 'highlighted'
+          : ''}"
+        id="transaction{i}"
+      >
         <div class="col-4">
           <div class="form-floating">
             <input
@@ -172,6 +229,23 @@
 </div>
 
 <style>
+  .input-group {
+    transition: 0.3s;
+  }
+
+  .header-input {
+    border-radius: 0.5rem;
+    transition: 0.3s;
+  }
+
+  .highlighted {
+    box-shadow: 2px 2px 7px 3px #009fff;
+  }
+
+  .highlighted2 {
+    box-shadow: 2px 2px 7px 3px #ffc400;
+  }
+
   .blockValid {
     background-color: rgba(200, 255, 200, 0.7);
   }
@@ -195,6 +269,10 @@
   .transactionRow > div {
     margin-top: 0.3rem;
     margin-bottom: 0.3rem;
+  }
+
+  .row {
+    transition: 0.3s;
   }
 
   .transactionRow {
