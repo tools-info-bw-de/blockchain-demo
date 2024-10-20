@@ -2,6 +2,8 @@
   import "bootstrap/dist/css/bootstrap.min.css";
   import Block from "./Block.svelte";
   import { fade } from "svelte/transition";
+  import { Popover } from "bootstrap";
+  import { onMount } from "svelte";
 
   let blocks = [
     {
@@ -20,7 +22,7 @@
     {
       id: 2,
       previousHash:
-        "88b15cff07ac16932ed6b61ed7ffce8a6e30793171124ab828b3331a526d07b0",
+        "7ea9f7257f1dc7efb9ac706a7fa284a96cbaad702d73099678f84bb7ae4c46b1",
       transactionHash: "",
       nonce: "22871",
       headerHash: "",
@@ -34,7 +36,7 @@
     {
       id: 3,
       previousHash:
-        "1d6f8bcf7105afae69841b36476587a1f1ad12ae94e4cee36ec6a22cd8e7a87c",
+        "90bbdee8566a94027b429f05908342a54a3ac9e0d79ad1c579485a3f78ee3a66",
       transactionHash: "",
       nonce: "2839",
       headerHash: "",
@@ -51,8 +53,37 @@
     }
   }
 
-  let hintText = "";
+  onMount(() => {
+    const popoverTriggerList = document.querySelectorAll(
+      '[data-bs-toggle="popover"]'
+    );
+    const popoverList = [...popoverTriggerList].map(
+      (popoverTriggerEl) =>
+        new Popover(popoverTriggerEl, {
+          html: true,
+          sanitize: false,
+          trigger: "focus",
+        })
+    );
+  });
+
+  function addBlock() {
+    let newBlock = {
+      id: blocks.length + 1,
+      previousHash: blocks[blocks.length - 1].headerHash,
+      transactionHash: "",
+      nonce: Math.floor(Math.random() * 10000),
+      headerHash: "",
+      transactions: [{ amount: "", from: "", to: "" }],
+      blockValid: true,
+    };
+    blocks = [...blocks, newBlock];
+  }
+
+  let hintText =
+    "<em>Fahre über ein Element, um eine Erklärung zu erhalten.</em>";
   let highlightedPreviousHash = "";
+  let activateMining = false;
 </script>
 
 <svelte:head>
@@ -60,22 +91,76 @@
   <meta name="description" content="Blockchain Demo" />
 </svelte:head>
 
-<h1>Blockchain</h1>
-<div class="block-scroll">
-  {#each blocks as blockData}
-    <Block bind:blockData bind:hintText bind:highlightedPreviousHash />
-  {/each}
+<h1>Blockchain Demo</h1>
+
+<button
+  type="button"
+  class="infoBtn btn btn-outline-dark btn-sm"
+  data-bs-container="body"
+  data-bs-toggle="popover"
+  data-bs-placement="bottom"
+  data-bs-content="Quellcode auf <a href='https://github.com/tools-info-bw-de/blockchain-demo' target='_blank'>github</a>!<br>Lizenz: MIT<br>Marco Kümmel"
+  >info</button
+>
+
+<div
+  class="form-check form-switch d-flex justify-content-end align-items-center mt-2 ms-2 activateMiningToggle"
+>
+  <input
+    class="form-check-input me-2"
+    type="checkbox"
+    role="switch"
+    id="activateMining"
+    bind:checked={activateMining}
+  />
+  <label class="form-check-label" for="activateMining"
+    >Aktiviere das Block-Mining<br /><em
+      >Erst aktivieren, wenn du die Basics verstanden hast.</em
+    ></label
+  >
 </div>
 
-<div class="d-flex justify-content-center mt-5 mb-3">
+<div class="block-scroll mt-5">
+  {#each blocks as blockData}
+    <Block
+      bind:blockData
+      bind:hintText
+      bind:highlightedPreviousHash
+      bind:activateMining
+    />
+  {/each}
+  <div class="d-flex align-items-center me-3">
+    <button class="btn btn-outline-primary" on:click={addBlock}
+      >Weiteren Block hinzufügen</button
+    >
+  </div>
+</div>
+
+<div class="d-flex justify-content-center mt-4 mb-3">
   {#key hintText}
-    <div class="hintBox p-5">
-      <p in:fade={{ delay: 105, duration: 100 }}>{@html hintText}</p>
+    <div class="hintBox p-4">
+      <div in:fade={{ delay: 105, duration: 100 }}>{@html hintText}</div>
     </div>
   {/key}
 </div>
 
 <style>
+  .infoBtn {
+    position: absolute;
+    top: 10px !important;
+    right: 10px !important;
+  }
+
+  .activateMiningToggle {
+    position: absolute;
+    top: 10px !important;
+    left: 10px !important;
+  }
+
+  #activateMining {
+    font-size: 1.3rem;
+  }
+
   .block-scroll {
     display: flex;
     flex-direction: row;
@@ -83,6 +168,7 @@
   }
 
   .hintBox {
+    font-size: 1.15rem;
     border: 1px dashed rgb(185, 110, 110);
     width: 70vw;
     min-width: 300px;

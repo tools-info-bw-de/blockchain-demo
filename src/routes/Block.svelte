@@ -1,4 +1,8 @@
 <script>
+  import { slide } from "svelte/transition";
+  import { onMount } from "svelte";
+  import { hash } from "./hash.js";
+
   export const prerender = false;
 
   export let blockData = {
@@ -16,16 +20,40 @@
   export let highlightedPreviousHash = "";
   let highlighted = "";
 
-  const hash = (val) =>
-    crypto.subtle
-      .digest("SHA-256", new TextEncoder("utf-8").encode(val))
-      .then((h) => {
-        let hexes = [],
-          view = new DataView(h);
-        for (let i = 0; i < view.byteLength; i += 4)
-          hexes.push(("00000000" + view.getUint32(i).toString(16)).slice(-8));
-        return hexes.join("");
-      });
+  export let activateMining = false;
+  let isMining = false;
+  let elapsedTime = 0;
+  let timer;
+
+  let worker;
+
+  function createWorker() {
+    return new Worker(new URL("./minerWorker.js", import.meta.url));
+  }
+
+  function terminateWorker() {
+    if (worker) {
+      worker.terminate();
+      worker = null;
+      isMining = false;
+      clearInterval(timer);
+    }
+  }
+
+  function restartWorker() {
+    terminateWorker();
+    worker = createWorker();
+    worker.onmessage = function (e) {
+      const nonce = e.data;
+      blockData.nonce = Number(nonce);
+      isMining = false;
+      clearInterval(timer);
+    };
+  }
+
+  onMount(() => {
+    restartWorker();
+  });
 
   async function updateTransactionHash(transactions) {
     let s = transactions.map((t) => `${t.from}${t.to}${t.amount}`).join("");
@@ -35,7 +63,7 @@
   }
 
   async function updateBlockHash(previousHash, transactionHash, nonce) {
-    let s = `${previousHash}${transactionHash}${nonce}`;
+    let s = `${nonce}${previousHash}${transactionHash}`;
     hash(s).then((h) => {
       if (blockData.headerHash !== h) blockData.headerHash = h;
     });
@@ -48,37 +76,64 @@
     blockData.nonce
   );
 
+  function addTransaction() {
+    blockData.transactions = [
+      ...blockData.transactions,
+      { amount: "", from: "", to: "" },
+    ];
+  }
+
   function hintNonce() {
     hintText =
-      "Nonce ('number used once') ist ein Wert, der so gewählt werden muss, dass der Hash des Headers mit einer bestimmten Anzahl an Nullen beginnt.";
+      "Die Nonce ('number used once') ist ein Wert, der so gewählt werden muss, dass der Hash des Headers mit einer bestimmten Anzahl an Nullen beginnt. Dies geschieht beim <b>Mining</b> (siehe unterer Knopf).";
   }
 
   function hintPreviousHash() {
     hintText =
-      "Der <b>Hash des Headers</b> des <u>vorherigen</u> Blocks muss im aktuellen Block gespeichert werden. Nur, wenn beide Hashes <b>übereinstimmen</b>, ist der vorherige Block gültig.";
+      "<ul><li>Der <b>Hash des Headers</b> des <u>vorherigen</u> Blocks muss im aktuellen Block gespeichert werden. Nur, wenn beide Hashes <b>übereinstimmen</b>, ist der vorherige Block gültig.</li><li>Der erste Block hat keinen Vorgänger und trägt daher an dieser Stelle eine 0er-Folge.</li></ul>";
     highlightedPreviousHash = blockData.id;
   }
 
   function hintTransactionHash() {
-    hintText = "Dieser SHA-256 Hash wird aus allen Transaktionen berechnet.";
+    hintText =
+      "Dieser SHA-256 Hash wird aus allen Transaktionen berechnet.<br><ul><li>In Echt kommt dabei der <a target='_blank' href='https://de.wikipedia.org/wiki/Hash-Baum'>Merkle-Tree</a> zum Einsatz.</li><li>In dieser Demo wird aus allen Transaktionen einfach ein langer String gebaut (<code>Von0Zu0Betrag0Von1Zu1Betrag1...</code>), der dann gehasht wird.</li></ul>";
     highlighted = "transactions";
   }
 
   function hintHeader() {
     hintText =
-      "Der Hash des Headers wird aus der Nonce, dem Hash des vorherigen Headers und dem Transaktionshash berechnet.";
+      "Der SHA-256 Hash des Headers wird aus " +
+      (activateMining ? "der <u>Nonce</u>, " : "") +
+      "dem <u>Hash des vorherigen Headers</u> und dem <u>Transaktionshash</u> berechnet.";
     highlighted = "header";
   }
 
+  function hintMining() {
+    hintText =
+      "<ul><li>Beim Mining wird die <b>Nonce</b> so lange verändert, bis der Hash des Headers mit einer bestimmten Anzahl an Nullen beginnt (hier 4).</li><li>Sobald jemand diesen Wert gefunden hat, wird der Block als <b>gemined</b> betrachtet und an die Blockchain angehängt. Im Durchschnitt findet nur <b>ein PC</b> weltweit <b>alle 10 Minuten</b> die passende Nonce für einen solchen Hash.</li><li>Damit die nötige Zeit zum Block-Minen trotz steigender Rechenleistung bei etwa 10 Minuten bleibt, wird regelmäßig die Schwierigkeit angepasst. Dazu wird die Anzahl der Nullen, mit denen der Hash beginnen muss, erhöht oder verringert.</li><li>Warum man das extrem energieverschwendende Mining überhaupt benötigt, kannst du im Wiki nachlesen.</li></ul>";
+  }
+
   function removeHint() {
-    showDefaultHint();
     highlighted = "";
     highlightedPreviousHash = "";
   }
 
-  function showDefaultHint() {
-    hintText =
-      "<em>Fahre über ein Element, um eine Erklärung zu erhalten.</em>";
+  function startMining() {
+    if (isMining) {
+      restartWorker();
+      return;
+    }
+    isMining = true;
+
+    elapsedTime = 0;
+    timer = setInterval(() => {
+      elapsedTime++;
+    }, 1000);
+
+    worker.postMessage({
+      previousHash: blockData.previousHash,
+      transactionHash: blockData.transactionHash,
+    });
   }
 </script>
 
@@ -88,23 +143,25 @@
     <div class="block-header">
       <h5 class="card-title mb-3">Header</h5>
       <div class="header-input {highlighted === 'header' ? 'highlighted' : ''}">
-        <div class="row g-2 align-items-center">
-          <div
-            class="input-group mb-2"
-            on:mouseover={hintNonce}
-            on:focus={hintNonce}
-            on:mouseleave={removeHint}
-            role="paragraph"
-          >
-            <span class="input-group-text" id="basic-addon1">Nonce</span>
-            <input
-              type="number"
-              class="form-control"
-              placeholder="Username"
-              bind:value={blockData.nonce}
-            />
+        {#if activateMining}
+          <div class="row g-2 align-items-center" transition:slide|global>
+            <div
+              class="input-group mb-2"
+              on:mouseover={hintNonce}
+              on:focus={hintNonce}
+              on:mouseleave={removeHint}
+              role="paragraph"
+            >
+              <span class="input-group-text" id="nonce">Nonce</span>
+              <input
+                type="number"
+                class="form-control"
+                placeholder=""
+                bind:value={blockData.nonce}
+              />
+            </div>
           </div>
-        </div>
+        {/if}
         <div class="row g-2 align-items-center">
           <div
             class="input-group mb-2 {highlightedPreviousHash === blockData.id
@@ -125,7 +182,7 @@
             />
           </div>
         </div>
-        <div class="row g-2 align-items-center">
+        <div class="row g-2 align-items-center" id="transactionHash">
           <div
             class="input-group mb-2"
             on:mouseover={hintTransactionHash}
@@ -167,6 +224,27 @@
           />
         </div>
       </div>
+      {#if activateMining}
+        <div class="row g-2 d-flex" transition:slide|global>
+          <button
+            type="button"
+            class="btn {isMining ? 'btn-danger' : 'btn-primary'} ms-auto"
+            on:mouseover={hintMining}
+            on:focus={hintMining}
+            on:mouseleave={removeHint}
+            on:click={startMining}
+          >
+            {#if isMining}
+              <div class="spinner-border spinner-border-sm" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+              Laufzeit: {elapsedTime}s - Klicken zum Stoppen!
+            {:else}
+              Block minen
+            {/if}
+          </button>
+        </div>
+      {/if}
     </div>
   </div>
   <div class="card-body">
@@ -179,7 +257,7 @@
           : ''}"
         id="transaction{i}"
       >
-        <div class="col-4">
+        <div class="col">
           <div class="form-floating">
             <input
               type="text"
@@ -191,7 +269,7 @@
             <label for="transactionFrom">Von</label>
           </div>
         </div>
-        <div class="col-4">
+        <div class="col">
           <div class="form-floating">
             <input
               type="text"
@@ -203,7 +281,7 @@
             <label for="transactionTo">Zu</label>
           </div>
         </div>
-        <div class="col-4">
+        <div class="col">
           <div class="form-floating">
             <input
               type="number"
@@ -215,8 +293,36 @@
             <label for="transactionAmount">Betrag</label>
           </div>
         </div>
+        <div class="col-2">
+          <button
+            type="button"
+            class="btn btn-outline-danger"
+            on:click={() => {
+              blockData.transactions = blockData.transactions.filter(
+                (t, j) => j !== i
+              );
+            }}
+          >
+            <svg
+              width="1em"
+              height="1.5em"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 448 512"
+              ><!--!Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path
+                d="M135.2 17.7L128 32 32 32C14.3 32 0 46.3 0 64S14.3 96 32 96l384 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-96 0-7.2-14.3C307.4 6.8 296.3 0 284.2 0L163.8 0c-12.1 0-23.2 6.8-28.6 17.7zM416 128L32 128 53.2 467c1.6 25.3 22.6 45 47.9 45l245.8 0c25.3 0 46.3-19.7 47.9-45L416 128z"
+              /></svg
+            >
+          </button>
+        </div>
       </div>
     {/each}
+    <div class="d-flex justify-content-center">
+      <button
+        type="button"
+        class="btn btn-outline-primary"
+        on:click={addTransaction}><b>+</b></button
+      >
+    </div>
     {#if !blockData.blockValid}
       <div class="alert alert-danger mt-3" role="alert">
         <h5>Block ist ungültig!</h5>
