@@ -14,7 +14,7 @@
       nonce: "836",
       headerHash: "",
       transactions: [
-        { amount: "50.2", from: "Alice", to: "Bob" },
+        { amount: "50.1", from: "Alice", to: "Bob" },
         { amount: "10.1", from: "Charlie", to: "David" },
       ],
       blockValid: true,
@@ -22,7 +22,7 @@
     {
       id: 2,
       previousHash:
-        "7ea9f7257f1dc7efb9ac706a7fa284a96cbaad702d73099678f84bb7ae4c46b1",
+        "f285383302105629e68514103234cd90e6bf55743d463153493d41bc6ede7fca",
       transactionHash: "",
       nonce: "22871",
       headerHash: "",
@@ -36,7 +36,7 @@
     {
       id: 3,
       previousHash:
-        "90bbdee8566a94027b429f05908342a54a3ac9e0d79ad1c579485a3f78ee3a66",
+        "f833754b017d09c793d884c43ce6815954b02aaf1b2b6853427760c482865351",
       transactionHash: "",
       nonce: "2839",
       headerHash: "",
@@ -84,6 +84,17 @@
     "<em>Fahre über ein Element, um eine Erklärung zu erhalten.</em>";
   let highlightedPreviousHash = "";
   let activateMining = false;
+
+  const parentDeleteBlock = (id) => {
+    if (blocks.length === 1) return;
+
+    blocks = blocks.filter((block) => block.id !== id);
+    // update ids
+    blocks = blocks.map((block, index) => {
+      block.id = index + 1;
+      return block;
+    });
+  };
 </script>
 
 <svelte:head>
@@ -127,6 +138,7 @@
       bind:hintText
       bind:highlightedPreviousHash
       bind:activateMining
+      {parentDeleteBlock}
     />
   {/each}
   <div class="d-flex align-items-center me-3">

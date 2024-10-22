@@ -5,6 +5,7 @@
 
   export const prerender = false;
 
+  export let parentDeleteBlock;
   export let blockData = {
     id: "?",
     previousHash: "",
@@ -85,7 +86,7 @@
 
   function hintNonce() {
     hintText =
-      "Die Nonce ('number used once') ist ein Wert, der so gewählt werden muss, dass der Hash des Headers mit einer bestimmten Anzahl an Nullen beginnt. Dies geschieht beim <b>Mining</b> (siehe unterer Knopf).";
+      "<ul><li>Die Nonce ('number used once') wird nur für das <b>Block-Mining</b> (siehe unterer Knopf) benötigt.</li><li>Sie ist eine <em>'zufällige/willkürliche'</em> natürliche Zahl, die in die Berechnung des Header-Hashs einfließt. Der Mining-Computer probiert der Reihe nach alle natürlichen Zahlen durch, bis der <b>Hash des Headers</b> mit einer bestimmten Anzahl an Nullen beginnt.</li></ul>";
   }
 
   function hintPreviousHash() {
@@ -113,7 +114,7 @@
       "<ul><li>Beim Mining wird die <b>Nonce</b> so lange verändert, bis der Hash des Headers mit einer bestimmten Anzahl an Nullen beginnt (hier 4).</li><li>Sobald jemand diesen Wert gefunden hat, wird der Block als <b>gemined</b> betrachtet und an die Blockchain angehängt. Im Durchschnitt findet nur <b>ein PC</b> weltweit <b>alle 10 Minuten</b> die passende Nonce für einen solchen Hash.</li><li>Damit die nötige Zeit zum Block-Minen trotz steigender Rechenleistung bei etwa 10 Minuten bleibt, wird regelmäßig die Schwierigkeit angepasst. Dazu wird die Anzahl der Nullen, mit denen der Hash beginnen muss, erhöht oder verringert.</li><li>Warum man das extrem energieverschwendende Mining überhaupt benötigt, kannst du im Wiki nachlesen.</li></ul>";
   }
 
-  function removeHint() {
+  function removeHighlight() {
     highlighted = "";
     highlightedPreviousHash = "";
   }
@@ -135,10 +136,34 @@
       transactionHash: blockData.transactionHash,
     });
   }
+
+  function deleteBlock(id) {
+    return () => {
+      terminateWorker();
+      parentDeleteBlock(id);
+    };
+  }
 </script>
 
 <div class="card mb-3 {blockData.blockValid ? 'blockValid' : 'blockInvalid'}">
-  <div class="card-header">Block #{blockData.id}</div>
+  <div class="card-header d-flex justify-content-between">
+    Block #{blockData.id}
+    <button
+      type="button"
+      class="btn btn-outline-danger"
+      on:click={deleteBlock(blockData.id)}
+    >
+      <svg
+        width="1em"
+        height="0.9em"
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 448 512"
+        ><!--!Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path
+          d="M135.2 17.7L128 32 32 32C14.3 32 0 46.3 0 64S14.3 96 32 96l384 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-96 0-7.2-14.3C307.4 6.8 296.3 0 284.2 0L163.8 0c-12.1 0-23.2 6.8-28.6 17.7zM416 128L32 128 53.2 467c1.6 25.3 22.6 45 47.9 45l245.8 0c25.3 0 46.3-19.7 47.9-45L416 128z"
+        /></svg
+      >
+    </button>
+  </div>
   <div class="card-body">
     <div class="block-header">
       <h5 class="card-title mb-3">Header</h5>
@@ -149,7 +174,7 @@
               class="input-group mb-2"
               on:mouseover={hintNonce}
               on:focus={hintNonce}
-              on:mouseleave={removeHint}
+              on:mouseleave={removeHighlight}
               role="paragraph"
             >
               <span class="input-group-text" id="nonce">Nonce</span>
@@ -165,11 +190,11 @@
         <div class="row g-2 align-items-center">
           <div
             class="input-group mb-2 {highlightedPreviousHash === blockData.id
-              ? 'highlighted2'
+              ? 'highlighted'
               : ''}"
             on:mouseover={hintPreviousHash}
             on:focus={hintPreviousHash}
-            on:mouseleave={removeHint}
+            on:mouseleave={removeHighlight}
             role="paragraph"
           >
             <span class="input-group-text" id="basic-addon1"
@@ -187,7 +212,7 @@
             class="input-group mb-2"
             on:mouseover={hintTransactionHash}
             on:focus={hintTransactionHash}
-            on:mouseleave={removeHint}
+            on:mouseleave={removeHighlight}
             role="paragraph"
           >
             <span class="input-group-text" id="basic-addon1"
@@ -206,11 +231,11 @@
       <div class="row g-2 align-items-center">
         <div
           class="input-group mb-2 {highlightedPreviousHash === blockData.id + 1
-            ? 'highlighted2'
+            ? 'highlighted'
             : ''}"
           on:mouseover={hintHeader}
           on:focus={hintHeader}
-          on:mouseleave={removeHint}
+          on:mouseleave={removeHighlight}
           role="paragraph"
         >
           <span class="input-group-text" id="basic-addon1"
@@ -231,7 +256,7 @@
             class="btn {isMining ? 'btn-danger' : 'btn-primary'} ms-auto"
             on:mouseover={hintMining}
             on:focus={hintMining}
-            on:mouseleave={removeHint}
+            on:mouseleave={removeHighlight}
             on:click={startMining}
           >
             {#if isMining}
@@ -326,8 +351,8 @@
     {#if !blockData.blockValid}
       <div class="alert alert-danger mt-3" role="alert">
         <h5>Block ist ungültig!</h5>
-        Der<em> Hash des Headers</em> stimmt nicht mit dem Hash überein, der im
-        nächsten Block gespeichet ist.<br />
+        Der&nbsp;<em>Hash des Headers</em> stimmt nicht mit dem Hash überein,
+        der im nächsten Block gespeichet ist.<br />
         Das bedeuted, dass der Block <strong>nachträglich</strong> manipuliert wurde.
       </div>
     {/if}
@@ -335,6 +360,11 @@
 </div>
 
 <style>
+  .card-header > button {
+    padding: 0.3rem;
+    line-height: 0;
+  }
+
   .input-group {
     transition: 0.3s;
   }
@@ -346,10 +376,6 @@
 
   .highlighted {
     box-shadow: 2px 2px 7px 3px #009fff;
-  }
-
-  .highlighted2 {
-    box-shadow: 2px 2px 7px 3px #ffc400;
   }
 
   .blockValid {
