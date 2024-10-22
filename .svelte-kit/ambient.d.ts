@@ -73,8 +73,8 @@ declare module '$env/static/private' {
 	export const npm_package_name: string;
 	export const XDG_RUNTIME_DIR: string;
 	export const SSL_CERT_DIR: string;
-	export const LANG: string;
 	export const VSCODE_INJECTION: string;
+	export const LANG: string;
 	export const LS_COLORS: string;
 	export const TERM_PROGRAM: string;
 	export const VSCODE_GIT_IPC_HANDLE: string;
@@ -177,8 +177,8 @@ declare module '$env/dynamic/private' {
 		npm_package_name: string;
 		XDG_RUNTIME_DIR: string;
 		SSL_CERT_DIR: string;
-		LANG: string;
 		VSCODE_INJECTION: string;
+		LANG: string;
 		LS_COLORS: string;
 		TERM_PROGRAM: string;
 		VSCODE_GIT_IPC_HANDLE: string;

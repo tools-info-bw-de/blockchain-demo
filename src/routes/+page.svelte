@@ -115,7 +115,7 @@
 >
 
 <div
-  class="form-check form-switch d-flex justify-content-end align-items-center mt-2 ms-2 activateMiningToggle"
+  class="form-check form-switch d-flex justify-content-end align-items-center mt-2 ms-4 activateMiningToggle"
 >
   <input
     class="form-check-input me-2"
