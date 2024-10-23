@@ -26,6 +26,8 @@
   let elapsedTime = 0;
   let timer;
 
+  let copyIconHeader = "copy";
+
   let worker;
 
   function createWorker() {
@@ -143,6 +145,22 @@
       parentDeleteBlock(id);
     };
   }
+
+  async function copyToClipboardHeader(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      copyIconHeader = "check";
+      setTimeout(() => {
+        copyIconHeader = "copy";
+      }, 1000);
+    } catch (err) {
+      console.error("Fehler beim Kopieren: ", err);
+      copyIconHeader = "exclamation";
+      setTimeout(() => {
+        copyIconHeader = "copy";
+      }, 1000);
+    }
+  }
 </script>
 
 <div class="card mb-3 {blockData.blockValid ? 'blockValid' : 'blockInvalid'}">
@@ -247,6 +265,45 @@
             disabled
             bind:value={blockData.headerHash}
           />
+          <button
+            class="input-group-text"
+            on:click={copyToClipboardHeader(blockData.headerHash)}
+          >
+            {#if copyIconHeader === "copy"}
+              <svg
+                class="copyBtn"
+                width="1em"
+                height="1em"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 448 512"
+                ><!--!Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path
+                  d="M384 336l-192 0c-8.8 0-16-7.2-16-16l0-256c0-8.8 7.2-16 16-16l140.1 0L400 115.9 400 320c0 8.8-7.2 16-16 16zM192 384l192 0c35.3 0 64-28.7 64-64l0-204.1c0-12.7-5.1-24.9-14.1-33.9L366.1 14.1c-9-9-21.2-14.1-33.9-14.1L192 0c-35.3 0-64 28.7-64 64l0 256c0 35.3 28.7 64 64 64zM64 128c-35.3 0-64 28.7-64 64L0 448c0 35.3 28.7 64 64 64l192 0c35.3 0 64-28.7 64-64l0-32-48 0 0 32c0 8.8-7.2 16-16 16L64 464c-8.8 0-16-7.2-16-16l0-256c0-8.8 7.2-16 16-16l32 0 0-48-32 0z"
+                /></svg
+              >
+            {:else if copyIconHeader === "check"}
+              <svg
+                class="checkBtn"
+                width="1em"
+                height="1em"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 448 512"
+                ><!--!Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path
+                  d="M438.6 105.4c12.5 12.5 12.5 32.8 0 45.3l-256 256c-12.5 12.5-32.8 12.5-45.3 0l-128-128c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0L160 338.7 393.4 105.4c12.5-12.5 32.8-12.5 45.3 0z"
+                /></svg
+              >
+            {:else}
+              <svg
+                class="exclamationBtn"
+                width="1em"
+                height="1em"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 128 512"
+                ><!--!Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path
+                  d="M96 64c0-17.7-14.3-32-32-32S32 46.3 32 64l0 256c0 17.7 14.3 32 32 32s32-14.3 32-32L96 64zM64 480a40 40 0 1 0 0-80 40 40 0 1 0 0 80z"
+                /></svg
+              >
+            {/if}
+          </button>
         </div>
       </div>
       {#if activateMining}
@@ -360,6 +417,24 @@
 </div>
 
 <style>
+  .copyBtn {
+    cursor: pointer;
+  }
+
+  button:hover > .copyBtn {
+    fill: #009fff;
+  }
+
+  .checkBtn {
+    cursor: pointer;
+    fill: green;
+  }
+
+  .exclamationBtn {
+    cursor: pointer;
+    fill: red;
+  }
+
   .card-header > button {
     padding: 0.3rem;
     line-height: 0;
